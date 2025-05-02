@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Task from "@/models/Task";
+import bcrypt from "bcryptjs";
 
 // GET /api/users - Get all users or a single user by name
 export async function GET(request: Request) {
@@ -36,22 +37,32 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
+    console.log("Creating user with email:", body.email);
 
     // Check if user with same email already exists
     const existingUser = await User.findOne({ email: body.email });
     if (existingUser) {
+      console.log("User with this email already exists");
       return NextResponse.json(
         { error: "User with this email already exists" },
         { status: 400 }
       );
     }
 
+    // Hash the password before saving
+    console.log("Hashing password...");
+    const hashedPassword = await bcrypt.hash(body.password, 12);
+    console.log("Password hashed successfully");
+
     const user = await User.create({
       ...body,
-      password: "default123", // You should implement proper password handling
+      password: hashedPassword,
     });
+    console.log("User created successfully");
 
-    return NextResponse.json(user);
+    // Don't return the password in the response
+    const { password, ...userWithoutPassword } = user.toObject();
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error("Error creating user:", error);
     return NextResponse.json(
@@ -89,6 +100,11 @@ export async function PATCH(request: Request) {
           { status: 400 }
         );
       }
+    }
+
+    // If password is being updated, hash it
+    if (body.password) {
+      body.password = await bcrypt.hash(body.password, 12);
     }
 
     const updatedUser = await User.findOneAndUpdate(

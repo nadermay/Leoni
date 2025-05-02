@@ -58,6 +58,17 @@ export function FileUploadTest() {
   const { toast } = useToast();
   const { currentUser } = useTaskContext();
 
+  if (!currentUser?.id && !currentUser?._id) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>File Upload</CardTitle>
+          <CardDescription>Please log in to upload files</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,14 +94,16 @@ export function FileUploadTest() {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Upload the file
-      const result = await uploadProfilePicture(
-        formData,
-        currentUser?.id.toString() || ""
-      );
+      // Upload the file using either id or _id
+      const userId = currentUser.id || currentUser._id;
+      const result = await uploadProfilePicture(formData, userId.toString());
 
       if (result.error) {
         throw new Error(result.error);
+      }
+
+      if (!result.url) {
+        throw new Error("Failed to get upload URL");
       }
 
       // Set the uploaded file URL
@@ -104,7 +117,10 @@ export function FileUploadTest() {
       console.error("Error uploading file:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload file. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to upload file. Please try again.",
         variant: "destructive",
       });
     } finally {

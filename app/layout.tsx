@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TaskProvider } from "@/contexts/task-context";
+import { Providers } from "@/components/providers/session-provider";
 import { registerServiceWorker } from "./service-worker";
 import "./globals.css";
 
@@ -25,14 +26,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TaskProvider>{children}</TaskProvider>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TaskProvider>{children}</TaskProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

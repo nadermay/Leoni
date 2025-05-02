@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
 const MONGODB_URI =
@@ -23,38 +24,55 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Hash password before saving
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    return next();
+  }
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
-async function createAdminUser() {
+async function createAdmin() {
   try {
+    console.log("Connecting to MongoDB...");
     await mongoose.connect(MONGODB_URI);
     console.log("Connected to MongoDB");
 
-    const adminUser = {
-      name: "Admin User",
-      email: "admin@example.com",
-      password: "admin123",
+    const adminData = {
+      name: "Admin",
+      email: "admin@leoni.com",
+      password: "admin123", // This will be hashed by the pre-save hook
       role: "admin",
       status: "active",
-      tasksAssigned: 0,
-      tasksCompleted: 0,
-      profilePicture: "/placeholder.svg?height=200&width=200",
     };
 
-    const existingAdmin = await User.findOne({ email: adminUser.email });
+    const existingAdmin = await User.findOne({ email: adminData.email });
     if (existingAdmin) {
       console.log("Admin user already exists");
+      await mongoose.disconnect();
       return;
     }
 
-    const user = await User.create(adminUser);
-    console.log("Admin user created successfully:", user);
-  } catch (error) {
-    console.error("Error creating admin user:", error);
-  } finally {
+    const admin = await User.create(adminData);
+    console.log("Admin user created successfully:", {
+      id: admin._id,
+      email: admin.email,
+      role: admin.role,
+    });
+
     await mongoose.disconnect();
-    console.log("Disconnected from MongoDB");
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    process.exit(1);
   }
 }
 
-createAdminUser();
+createAdmin();

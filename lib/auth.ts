@@ -1,6 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { connectToDatabase } from "./mongodb";
+import connectDB from "./mongodb";
 import { compare } from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -16,10 +16,9 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Missing credentials");
         }
 
-        const { db } = await connectToDatabase();
-        const user = await db
-          .collection("users")
-          .findOne({ email: credentials.email });
+        await connectDB();
+        const User = (await import("@/models/User")).default;
+        const user = await User.findOne({ email: credentials.email });
 
         if (!user) {
           throw new Error("No user found");

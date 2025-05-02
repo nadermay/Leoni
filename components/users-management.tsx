@@ -31,7 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { User } from "@/types/user";
 
 export function UsersManagement() {
@@ -44,15 +44,20 @@ export function UsersManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     role: "user",
     status: "active",
   });
   const [editFormData, setEditFormData] = useState({
     name: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     role: "user",
     status: "active",
   });
@@ -81,6 +86,24 @@ export function UsersManagement() {
 
   const handleAddUser = async () => {
     try {
+      if (!formData.password || !formData.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Password is required for new users",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,7 +115,14 @@ export function UsersManagement() {
       const newUser = await response.json();
       setUsers([...users, newUser]);
       setShowAddDialog(false);
-      setFormData({ name: "", email: "", role: "user", status: "active" });
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        role: "user",
+        status: "active",
+      });
       toast({
         title: "Success",
         description: "User added successfully",
@@ -243,6 +273,8 @@ export function UsersManagement() {
                         email: user.email,
                         role: user.role,
                         status: user.status,
+                        password: "",
+                        confirmPassword: "",
                       });
                       setShowEditDialog(true);
                     }}
@@ -290,6 +322,59 @@ export function UsersManagement() {
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Confirm Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium">Role</label>
@@ -351,6 +436,66 @@ export function UsersManagement() {
                   setEditFormData({ ...editFormData, email: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                New Password (Optional)
+              </label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={editFormData.password}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      password: e.target.value,
+                    })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={editFormData.confirmPassword}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium">Role</label>

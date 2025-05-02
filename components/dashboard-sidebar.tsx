@@ -14,6 +14,7 @@ import {
   LineChart,
   BarChart,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,11 @@ export function DashboardSidebar({ isAdmin }: SidebarProps) {
       title: "Tasks",
       href: isAdmin ? "/dashboard/admin/tasks" : "/dashboard/user/tasks",
       icon: <CheckSquare className="h-5 w-5" />,
+    },
+    {
+      title: "Orders",
+      href: isAdmin ? "/dashboard/admin/orders" : "/dashboard/user/orders",
+      icon: <ClipboardList className="h-5 w-5" />,
     },
     {
       title: "Performance",
