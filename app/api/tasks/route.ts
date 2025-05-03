@@ -2,11 +2,41 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 
+async function generateTaskNumber() {
+  const lastTask = await Task.findOne().sort({ taskNumber: -1 });
+  return lastTask ? lastTask.taskNumber + 1 : 1;
+}
+
+// Helper function to determine task status
+function determineTaskStatus(
+  avancement: number,
+  deadline: Date
+): "completed" | "in-progress" | "overdue" {
+  // Ensure we're working with Date objects
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+
+  // Set times to start of day for fair comparison
+  now.setHours(0, 0, 0, 0);
+  deadlineDate.setHours(0, 0, 0, 0);
+
+  if (avancement === 100) {
+    return "completed";
+  }
+
+  // Compare dates using getTime() for accurate comparison
+  if (deadlineDate.getTime() < now.getTime()) {
+    return "overdue";
+  }
+
+  return "in-progress";
+}
+
 // GET /api/tasks - Get all tasks
 export async function GET() {
   try {
     await connectDB();
-    const tasks = await Task.find({}).sort({ _id: -1 });
+    const tasks = await Task.find().sort({ createdAt: -1 });
     return NextResponse.json(tasks);
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -61,40 +91,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // Determine status based on avancement and deadline
-    const status =
-      body.avancement === 100
-        ? "completed"
-        : new Date(body.delaiRealisation) < new Date()
-        ? "overdue"
-        : "in-progress";
+    // Generate the next task number
+    body.taskNumber = await generateTaskNumber();
+
+    // Parse deadline date
+    const deadline = new Date(body.delaiRealisation);
+    if (isNaN(deadline.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid deadline date format" },
+        { status: 400 }
+      );
+    }
+
+    // Set status based on avancement and deadline
+    body.status = determineTaskStatus(body.avancement, deadline);
 
     // Create new task
     const task = await Task.create({
-      segSce: body.segSce,
-      pdcaStage: body.pdcaStage,
-      source: body.source,
-      processes: body.processes,
-      action: body.action,
-      pilotes: body.pilotes,
-      delaiRealisation: body.delaiRealisation,
-      avancement: body.avancement,
-      commentaires: body.commentaires || "",
-      status,
+      ...body,
+      delaiRealisation: deadline,
       createdAt: new Date(),
-      taskNumber: 0, // Initialize with 0, the pre-save middleware will update it
     });
 
     console.log("Task created successfully:", task);
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     console.error("Error creating task:", error);
-    // Return more detailed error information
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: "Duplicate task number. Please try again." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      {
-        error: "Failed to create task",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to create task" },
       { status: 500 }
     );
   }

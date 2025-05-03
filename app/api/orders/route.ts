@@ -4,10 +4,22 @@ import Order from "@/models/Order";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+async function generateOrderNumber() {
+  const lastOrder = await Order.findOne({
+    orderNumber: { $exists: true },
+  }).sort({ orderNumber: -1 });
+
+  return lastOrder
+    ? `ORD${(parseInt(lastOrder.orderNumber.replace("ORD", "")) + 1)
+        .toString()
+        .padStart(4, "0")}`
+    : "ORD0001"; // Initial number
+}
+
 export async function GET() {
   try {
     await connectDB();
-    const orders = await Order.find({}).sort({ createdAt: -1 });
+    const orders = await Order.find().sort({ createdAt: -1 });
     return NextResponse.json(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -25,37 +37,93 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
     await connectDB();
+    const body = await request.json();
 
-    // Log the incoming data for debugging
-    console.log("Creating order with data:", body);
+    // Validate required fields
+    const requiredFields = [
+      "project",
+      "requester",
+      "description",
+      "category",
+      "deadline",
+      "pam",
+      "supplier",
+      "requestFrame",
+      "process",
+    ];
 
-    // Get the current count of orders to generate the next order number
-    const count = await Order.countDocuments();
-    const orderNumber = `ORD${String(count + 1).padStart(4, "0")}`;
+    const missingFields = requiredFields.filter((field) => !body[field]);
 
-    // Create a new order with validated data
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate process value
+    const validProcesses = [
+      "Testing",
+      "Assemblage",
+      "Connecting",
+      "Cutting/WPA",
+    ];
+    if (!validProcesses.includes(body.process)) {
+      return NextResponse.json(
+        {
+          error: `Invalid process. Must be one of: ${validProcesses.join(
+            ", "
+          )}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Generate order number
+    body.orderNumber = await generateOrderNumber();
+
+    // Create new order
     const orderData = {
       ...body,
-      orderNumber,
-      status: body.status || "in-progress",
-      process: body.process || "Testing",
-      orderCreationDate: new Date(),
       deadline: new Date(body.deadline),
+      totalPrice: body.totalPrice || 0,
+      status: "in-progress",
+      done: false,
+      orderCreationDate: new Date(),
     };
 
+    // Create the order
     const order = await Order.create(orderData);
+    console.log("Order created successfully:", order);
     return NextResponse.json(order, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating order:", error);
 
-    // Return more detailed error information
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      return NextResponse.json(
+        {
+          error: "Validation error",
+          details: Object.values(error.errors).map((err) => err.message),
+        },
+        { status: 400 }
+      );
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: "Duplicate order number. Please try again." },
+        { status: 400 }
+      );
+    }
+
+    // Handle other errors
     return NextResponse.json(
       {
         error: "Failed to create order",
         details: error.message,
-        validationErrors: error.errors,
       },
       { status: 500 }
     );

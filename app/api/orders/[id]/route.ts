@@ -70,16 +70,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     await connectDB();
     const orderId = params.id;
-    const order = await Order.findByIdAndDelete(orderId);
 
-    if (!order) {
+    const deletedOrder = await Order.findByIdAndDelete(orderId);
+    if (!deletedOrder) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

@@ -16,10 +16,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "@/components/ui/chart";
+} from "recharts";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useTaskContext } from "@/contexts/task-context";
+import { format, parseISO, isValid, startOfDay } from "date-fns";
 
 interface TaskCompletionChartProps {
   isAdmin: boolean;
@@ -42,20 +43,17 @@ export const TaskCompletionChart = forwardRef<any, TaskCompletionChartProps>(
           : timeRange === "90days"
           ? 90
           : 365;
-      const dataPoints = timeRange === "year" ? 12 : days; // Use months for year view
+      const dataPoints = timeRange === "year" ? 12 : days;
 
       // Generate dates
       const dates = Array.from({ length: dataPoints }, (_, i) => {
         const date = new Date();
         if (timeRange === "year") {
           date.setMonth(date.getMonth() - (dataPoints - i - 1));
-          return date.toLocaleDateString("en-US", { month: "short" });
+          return format(date, "MMM");
         } else {
           date.setDate(date.getDate() - (dataPoints - i - 1));
-          return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
+          return format(date, "MMM dd");
         }
       });
 
@@ -69,22 +67,29 @@ export const TaskCompletionChart = forwardRef<any, TaskCompletionChartProps>(
         }
 
         // Filter by date range
-        const taskDate = new Date(task.createdAt || task.delaiRealisation);
+        const taskDate = task.createdAt || task.delaiRealisation;
+        if (!taskDate) return false;
+
+        const parsedDate = parseISO(taskDate);
+        if (!isValid(parsedDate)) return false;
+
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
-        return taskDate >= startDate;
+        return parsedDate >= startDate;
       });
 
       // Calculate completion rates for each date and PDCA stage
       return dates.map((date) => {
         const baseObj: any = { date };
         const dateTasks = filteredTasks.filter((task) => {
-          const taskDate = new Date(task.createdAt || task.delaiRealisation);
+          const taskDate = task.createdAt || task.delaiRealisation;
+          if (!taskDate) return false;
+
+          const parsedDate = parseISO(taskDate);
+          if (!isValid(parsedDate)) return false;
+
           return (
-            taskDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            }) === date
+            format(parsedDate, timeRange === "year" ? "MMM" : "MMM dd") === date
           );
         });
 
@@ -133,6 +138,22 @@ export const TaskCompletionChart = forwardRef<any, TaskCompletionChartProps>(
       setData(generateData());
     }, [timeRange, userFilter, isAdmin, tasks, currentUser]);
 
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="rounded-lg border bg-background p-2 shadow-sm">
+            <p className="font-medium">{label}</p>
+            {payload.map((entry: any, index: number) => (
+              <p key={index} style={{ color: entry.color }}>
+                {entry.name}: {entry.value}%
+              </p>
+            ))}
+          </div>
+        );
+      }
+      return null;
+    };
+
     return (
       <div className="h-[400px] w-full" ref={chartContainerRef}>
         <ResponsiveContainer width="100%" height="100%">
@@ -146,25 +167,50 @@ export const TaskCompletionChart = forwardRef<any, TaskCompletionChartProps>(
             }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+              interval={Math.ceil(data.length / 8)}
+            />
             <YAxis
               label={{
                 value: "Completion %",
                 angle: -90,
                 position: "insideLeft",
               }}
+              domain={[0, 100]}
             />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Line
               type="monotone"
               dataKey="Planning"
               stroke="#8884d8"
+              strokeWidth={2}
+              dot={{ r: 4 }}
               activeDot={{ r: 8 }}
             />
-            <Line type="monotone" dataKey="Execution" stroke="#82ca9d" />
-            <Line type="monotone" dataKey="Checking" stroke="#ffc658" />
-            <Line type="monotone" dataKey="Acting" stroke="#ff8042" />
+            <Line
+              type="monotone"
+              dataKey="Execution"
+              stroke="#82ca9d"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="Checking"
+              stroke="#ffc658"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="Acting"
+              stroke="#ff8042"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

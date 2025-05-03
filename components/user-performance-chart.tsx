@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -28,29 +28,77 @@ export function UserPerformanceChart({
   timeRange,
   userFilter = "all",
 }: UserPerformanceChartProps) {
-  const { tasks, users, currentUser } = useTaskContext();
+  const { tasks, users, currentUser, isLoading } = useTaskContext();
   const chartRef = useRef<HTMLDivElement>(null);
+  const [isChartLoading, setIsChartLoading] = useState(true);
+  const [chartError, setChartError] = useState<string | null>(null);
 
-  // Generate data based on time range and actual tasks
-  const generateData = () => {
-    const days = timeRange === "7days" ? 7 : timeRange === "30days" ? 30 : 90;
-    const dates = Array.from({ length: days }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (days - i - 1));
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
+  // Enhanced data generation with error handling
+  const generateData = useCallback(() => {
+    try {
+      const days = timeRange === "7days" ? 7 : timeRange === "30days" ? 30 : 90;
+      const dates = Array.from({ length: days }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - i - 1));
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
       });
-    });
 
-    if (isAdmin && userFilter === "all") {
-      // For admin viewing all users
-      const userPerformance = users.reduce((acc, user) => {
-        acc[user.name] = dates.map((date) => {
-          const userTasks = tasks.filter((task) => {
+      if (isAdmin && userFilter === "all") {
+        const userPerformance = users.reduce((acc, user) => {
+          acc[user.name] = dates.map((date) => {
+            const userTasks = tasks.filter((task) => {
+              if (!task.createdAt && !task.delaiRealisation) return false;
+              const taskDate = new Date(
+                task.createdAt || task.delaiRealisation
+              );
+              return (
+                task.pilotes === user.name &&
+                taskDate.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                }) === date
+              );
+            });
+
+            if (userTasks.length === 0) return 0;
+
+            const completedTasks = userTasks.filter(
+              (task) => task.status === "completed"
+            );
+            return Math.round((completedTasks.length / userTasks.length) * 100);
+          });
+          return acc;
+        }, {} as Record<string, number[]>);
+
+        return dates.map((date, index) => ({
+          date,
+          ...Object.fromEntries(
+            Object.entries(userPerformance).map(([user, values]) => [
+              user,
+              values[index],
+            ])
+          ),
+        }));
+      } else {
+        const userName = isAdmin
+          ? userFilter
+          : currentUser?.name || "Your Performance";
+        const userTasks = tasks.filter((task) => {
+          if (isAdmin) {
+            return task.pilotes === userFilter;
+          } else {
+            return task.pilotes === currentUser?.name;
+          }
+        });
+
+        return dates.map((date) => {
+          const tasksForDate = userTasks.filter((task) => {
+            if (!task.createdAt && !task.delaiRealisation) return false;
             const taskDate = new Date(task.createdAt || task.delaiRealisation);
             return (
-              task.pilotes === user.name &&
               taskDate.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -58,69 +106,66 @@ export function UserPerformanceChart({
             );
           });
 
-          if (userTasks.length === 0) return 0;
-
-          const completedTasks = userTasks.filter(
+          const completedTasks = tasksForDate.filter(
             (task) => task.status === "completed"
           );
-          return Math.round((completedTasks.length / userTasks.length) * 100);
+          const completionRate =
+            tasksForDate.length > 0
+              ? Math.round((completedTasks.length / tasksForDate.length) * 100)
+              : 0;
+
+          return {
+            date,
+            [userName]: completionRate,
+          };
         });
-        return acc;
-      }, {} as Record<string, number[]>);
-
-      return dates.map((date, index) => ({
-        date,
-        ...Object.fromEntries(
-          Object.entries(userPerformance).map(([user, values]) => [
-            user,
-            values[index],
-          ])
-        ),
-      }));
-    } else {
-      // For single user view (either normal user or admin viewing specific user)
-      const userName = isAdmin ? userFilter : "Your Performance";
-      const userTasks = tasks.filter((task) => {
-        if (isAdmin) {
-          return task.pilotes === userFilter;
-        } else {
-          return task.pilotes === currentUser?.name;
-        }
-      });
-
-      return dates.map((date) => {
-        const tasksForDate = userTasks.filter((task) => {
-          const taskDate = new Date(task.createdAt || task.delaiRealisation);
-          return (
-            taskDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            }) === date
-          );
-        });
-
-        const completedTasks = tasksForDate.filter(
-          (task) => task.status === "completed"
-        );
-        const completionRate =
-          tasksForDate.length > 0
-            ? Math.round((completedTasks.length / tasksForDate.length) * 100)
-            : 0;
-
-        return {
-          date,
-          [userName]: completionRate,
-        };
-      });
+      }
+    } catch (error) {
+      console.error("Error generating chart data:", error);
+      setChartError("Failed to generate performance data");
+      return [];
     }
-  };
+  }, [tasks, users, currentUser, isAdmin, userFilter, timeRange]);
 
   const [data, setData] = useState(generateData());
 
-  // Refresh data when filters change or tasks change
+  // Update data when dependencies change
   useEffect(() => {
-    setData(generateData());
-  }, [timeRange, userFilter, isAdmin, tasks, users]);
+    setIsChartLoading(true);
+    setChartError(null);
+    try {
+      setData(generateData());
+    } catch (error) {
+      setChartError("Failed to update performance data");
+    } finally {
+      setIsChartLoading(false);
+    }
+  }, [timeRange, userFilter, isAdmin, tasks, users, currentUser, generateData]);
+
+  // Loading and error states
+  if (isLoading || isChartLoading) {
+    return (
+      <div className="flex items-center justify-center h-[300px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (chartError) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-red-500">
+        {chartError}
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+        No performance data available
+      </div>
+    );
+  }
 
   // Determine which lines to show based on the view
   const getLines = () => {

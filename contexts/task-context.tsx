@@ -22,8 +22,66 @@ export interface Task {
   delaiRealisation: string;
   avancement: number;
   commentaires?: string;
-  status: "completed" | "in-progress" | "overdue";
-  createdAt?: Date;
+  status: "completed" | "in-progress" | "overdue" | "pending" | "cancelled";
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  dueDate: string;
+  priority?: "low" | "medium" | "high";
+  tags?: string[];
+  attachments?: {
+    name: string;
+    url: string;
+    type: string;
+  }[];
+  history?: {
+    status: string;
+    timestamp: string;
+    user: string;
+    comment?: string;
+  }[];
+}
+
+// Add validation function for Task
+export function validateTask(task: Partial<Task>): task is Task {
+  return (
+    typeof task._id === "string" &&
+    typeof task.segSce === "string" &&
+    typeof task.pdcaStage === "string" &&
+    typeof task.source === "string" &&
+    typeof task.processes === "string" &&
+    typeof task.action === "string" &&
+    typeof task.pilotes === "string" &&
+    typeof task.delaiRealisation === "string" &&
+    typeof task.avancement === "number" &&
+    typeof task.status === "string" &&
+    ["completed", "in-progress", "overdue", "pending", "cancelled"].includes(
+      task.status
+    ) &&
+    typeof task.createdAt === "string" &&
+    typeof task.updatedAt === "string" &&
+    typeof task.dueDate === "string"
+  );
+}
+
+// Add helper function to calculate task status
+export function calculateTaskStatus(task: Partial<Task>): Task["status"] {
+  if (task.status === "completed" || task.status === "cancelled") {
+    return task.status;
+  }
+
+  const now = new Date();
+  const dueDate = new Date(task.dueDate || task.delaiRealisation || "");
+
+  if (task.avancement === 100) {
+    return "completed";
+  }
+
+  if (now > dueDate) {
+    return "overdue";
+  }
+
+  return task.avancement > 0 ? "in-progress" : "pending";
 }
 
 // Define the User type
@@ -85,6 +143,9 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 // Add these constants at the top of the file
 const SESSION_KEY = "pdca-session";
 
+// Add polling interval constant
+const POLLING_INTERVAL = 30000; // 30 seconds
+
 // Sample initial tasks
 const initialAdminTasks: Task[] = [
   {
@@ -99,7 +160,10 @@ const initialAdminTasks: Task[] = [
     avancement: 100,
     commentaires: "Completed on time",
     status: "completed",
-    createdAt: new Date(2025, 2, 10),
+    createdAt: "2025-03-10T10:00:00",
+    updatedAt: "2025-03-10T10:00:00",
+    completedAt: "2025-03-10T10:00:00",
+    dueDate: "2025-03-15T10:00:00",
   },
   {
     _id: "TASK-1002",
@@ -113,7 +177,9 @@ const initialAdminTasks: Task[] = [
     avancement: 75,
     commentaires: "In progress, on track",
     status: "in-progress",
-    createdAt: new Date(2025, 2, 12),
+    createdAt: "2025-03-12T10:00:00",
+    updatedAt: "2025-03-12T10:00:00",
+    dueDate: "2025-03-20T10:00:00",
   },
   {
     _id: "TASK-1003",
@@ -127,7 +193,9 @@ const initialAdminTasks: Task[] = [
     avancement: 0,
     commentaires: "Delayed due to dependencies",
     status: "overdue",
-    createdAt: new Date(2025, 2, 5),
+    createdAt: "2025-03-05T10:00:00",
+    updatedAt: "2025-03-05T10:00:00",
+    dueDate: "2025-03-10T10:00:00",
   },
   {
     _id: "TASK-1004",
@@ -141,7 +209,9 @@ const initialAdminTasks: Task[] = [
     avancement: 30,
     commentaires: "Preparing deployment scripts",
     status: "in-progress",
-    createdAt: new Date(2025, 2, 15),
+    createdAt: "2025-03-15T10:00:00",
+    updatedAt: "2025-03-15T10:00:00",
+    dueDate: "2025-03-25T10:00:00",
   },
   {
     _id: "TASK-1005",
@@ -155,7 +225,9 @@ const initialAdminTasks: Task[] = [
     avancement: 0,
     commentaires: "Waiting for stakeholder availability",
     status: "overdue",
-    createdAt: new Date(2025, 2, 8),
+    createdAt: "2025-03-08T10:00:00",
+    updatedAt: "2025-03-08T10:00:00",
+    dueDate: "2025-03-12T10:00:00",
   },
 ];
 
@@ -172,7 +244,9 @@ const initialUserTasks: Task[] = [
     avancement: 60,
     commentaires: "Working on final details",
     status: "in-progress",
-    createdAt: new Date(2025, 2, 14),
+    createdAt: "2025-03-14T10:00:00",
+    updatedAt: "2025-03-14T10:00:00",
+    dueDate: "2025-03-18T10:00:00",
   },
   {
     _id: "TASK-2002",
@@ -186,7 +260,10 @@ const initialUserTasks: Task[] = [
     avancement: 100,
     commentaires: "Completed ahead of schedule",
     status: "completed",
-    createdAt: new Date(2025, 2, 16),
+    createdAt: "2025-03-16T10:00:00",
+    updatedAt: "2025-03-16T10:00:00",
+    completedAt: "2025-03-16T10:00:00",
+    dueDate: "2025-03-22T10:00:00",
   },
   {
     _id: "TASK-2003",
@@ -200,7 +277,9 @@ const initialUserTasks: Task[] = [
     avancement: 0,
     commentaires: "Blocked by API availability",
     status: "overdue",
-    createdAt: new Date(2025, 2, 4),
+    createdAt: "2025-03-04T10:00:00",
+    updatedAt: "2025-03-04T10:00:00",
+    dueDate: "2025-03-08T10:00:00",
   },
 ];
 
@@ -265,6 +344,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
+    null
+  );
 
   // Add a state to track task updates
   const [taskUpdateCount, setTaskUpdateCount] = useState(0);
@@ -296,32 +378,61 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
-  // Fetch data from MongoDB
+  // Enhanced fetchData function with better error handling
   const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      // Fetch tasks
+      console.log("Fetching tasks from API...");
+      // Fetch tasks with retry mechanism
       const tasksResponse = await fetch("/api/tasks");
+      if (!tasksResponse.ok) {
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.statusText}`);
+      }
       const tasksData = await tasksResponse.json();
+      console.log("Fetched tasks data:", tasksData);
       setTasks(tasksData);
 
-      // Fetch users
+      // Fetch users with retry mechanism
       const usersResponse = await fetch("/api/users");
+      if (!usersResponse.ok) {
+        throw new Error(`Failed to fetch users: ${usersResponse.statusText}`);
+      }
       const usersData = await usersResponse.json();
       setUsers(usersData);
+
+      // Notify listeners about the update
+      notifyTaskListeners();
+      notifyUserListeners();
     } catch (error) {
       console.error("Error fetching data:", error);
+      setError(error instanceof Error ? error.message : "Failed to fetch data");
       toast({
         title: "Error",
         description: "Failed to fetch data. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Set mounted state and fetch initial data
+  // Set up polling for real-time updates
   useEffect(() => {
-    setIsLoading(true);
+    // Initial fetch
     fetchData();
+
+    // Set up polling interval
+    const interval = setInterval(fetchData, POLLING_INTERVAL);
+    setPollingInterval(interval);
+
+    // Clean up interval on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
   }, []);
 
   // Listeners for real-time updates
@@ -376,9 +487,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     Object.values(userListeners).forEach((callback) => callback());
   }, [userListeners]);
 
-  // Function to force a refresh of tasks
-  const refreshTasks = useCallback(() => {
-    setTaskUpdateCount((prev) => prev + 1);
+  // Enhanced refreshTasks function
+  const refreshTasks = useCallback(async () => {
+    await fetchData();
   }, []);
 
   // Function to authenticate a user
