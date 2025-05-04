@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useSession, signOut, signIn } from "next-auth/react";
 
 // Define the Task type
 export interface Task {
@@ -344,6 +345,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { data: session } = useSession();
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
     null
   );
@@ -354,6 +356,24 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [operationsInProgress, setOperationsInProgress] = useState<
     Record<string, boolean>
   >({});
+
+  // Update currentUser when session changes
+  useEffect(() => {
+    if (session?.user) {
+      setCurrentUser({
+        id: session.user.id as string,
+        name: session.user.name || "",
+        email: session.user.email || "",
+        role: session.user.role as "admin" | "user",
+        status: "active",
+        tasksAssigned: 0,
+        tasksCompleted: 0,
+        profilePicture: session.user.image || "/placeholder.svg",
+      });
+    } else {
+      setCurrentUser(null);
+    }
+  }, [session]);
 
   // Load session from localStorage on mount
   useEffect(() => {
@@ -496,22 +516,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const authenticateUser = useCallback(
     async (email: string, password: string): Promise<User | null> => {
       try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
         });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Login failed");
+        if (result?.error) {
+          throw new Error(result.error);
         }
 
-        const user = await response.json();
-        setCurrentUser(user);
-        return user;
+        // The session will be automatically updated by NextAuth
+        // which will trigger the useEffect above to set the currentUser
+        return null;
       } catch (error) {
         console.error("Authentication error:", error);
         return null;
@@ -521,9 +538,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   );
 
   // Function to logout
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await signOut({ redirect: false });
     setCurrentUser(null);
-    localStorage.removeItem(SESSION_KEY);
   }, []);
 
   // Function to add a new task
