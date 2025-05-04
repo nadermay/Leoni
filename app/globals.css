@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222 47% 30%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 222 47% 95%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222 47% 30%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar specific variables */
+    --sidebar-background: 222 47% 98%;
+    --sidebar-foreground: 222 47% 30%;
+    --sidebar-primary: 222 47% 30%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 222 47% 95%;
+    --sidebar-accent-foreground: 222 47% 30%;
+    --sidebar-border: 222 47% 90%;
+    --sidebar-ring: 222 47% 30%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 222 47% 60%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 222 47% 15%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 47% 15%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 222 47% 15%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 222 47% 60%;
+
+    /* Sidebar specific variables for dark mode */
+    --sidebar-background: 222 47% 10%;
+    --sidebar-foreground: 222 47% 90%;
+    --sidebar-primary: 222 47% 60%;
+    --sidebar-primary-foreground: 222 47% 10%;
+    --sidebar-accent: 222 47% 15%;
+    --sidebar-accent-foreground: 222 47% 90%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 222 47% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Improved typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-medium tracking-tight;
+  }
+
+  h1 {
+    @apply text-3xl sm:text-4xl;
+  }
+
+  h2 {
+    @apply text-2xl sm:text-3xl;
+  }
+
+  h3 {
+    @apply text-xl sm:text-2xl;
+  }
+
+  /* Enhanced card styling */
+  .card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200;
+  }
+
+  /* Button enhancements */
+  .button {
+    @apply rounded-lg font-medium transition-all duration-200;
+  }
+
+  /* Input field enhancements */
+  input,
+  select,
+  textarea {
+    @apply rounded-lg transition-all duration-200;
+  }
+}
+
+/* Custom styles for the dashboard layout */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.dashboard-content {
+  display: flex;
+  flex: 1;
+}
+
+.dashboard-main {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Task completion styles */
+.task-completed {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Responsive sidebar adjustments */
+@media (max-width: 768px) {
+  .sidebar-collapsed {
+    width: 0;
+    overflow: hidden;
+  }
+}
+
+/* Enhanced animations */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* Print styles */
+@media print {
+  /* Hide everything except the order details */
+  body * {
+    visibility: hidden;
+  }
+
+  .print-content,
+  .print-content * {
+    visibility: visible;
+  }
+
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Hide non-printable elements */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure text is black for better printing */
+  .print-content {
+    color: black;
+  }
+
+  /* Add page break between orders if multiple */
+  .print-order {
+    page-break-after: always;
+  }
+}
