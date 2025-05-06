@@ -335,7 +335,7 @@ export function AdminDashboard() {
 
                         return (
                           <TableRow
-                            key={task.id}
+                            key={task._id}
                             className={isCompleted ? "bg-muted/50" : ""}
                           >
                             <TableCell>

@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials");
+          throw new Error("Please enter both email and password");
         }
 
         await connectDB();
@@ -21,19 +21,25 @@ export const authOptions: NextAuthOptions = {
         const user = await User.findOne({ email: credentials.email });
 
         if (!user) {
-          throw new Error("No user found");
+          throw new Error("Email not found");
+        }
+
+        if (user.status !== "active") {
+          throw new Error("Account is inactive");
         }
 
         const isValid = await compare(credentials.password, user.password);
 
         if (!isValid) {
-          throw new Error("Invalid password");
+          throw new Error("Incorrect password");
         }
 
         return {
           id: user._id.toString(),
           email: user.email,
           name: user.name,
+          role: user.role,
+          status: user.status,
         };
       },
     }),
@@ -48,12 +54,16 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = user.role;
+        token.status = user.status;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.status = token.status as string;
       }
       return session;
     },

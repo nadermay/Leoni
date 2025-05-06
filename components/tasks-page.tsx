@@ -135,9 +135,28 @@ export default function TasksPage({ isAdmin }: TasksPageProps) {
     const task = tasks.find((t) => t._id === taskId);
     if (!task) return;
 
+    // Check if the user is allowed to modify this task
+    if (!isAdmin && task.pilotes !== currentUser?.name) {
+      toast({
+        title: "Permission denied",
+        description: "You can only modify tasks assigned to you",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Regular users can only complete tasks, not uncomplete them
+    if (!isAdmin && !isCompleted) {
+      toast({
+        title: "Permission denied",
+        description: "Only administrators can uncheck completed tasks",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Determine the new status and advancement
     const newStatus = isCompleted ? "completed" : "in-progress";
-    // Reset advancement to 0 when unchecking, otherwise set to 100 when checking
     const newAvancement = isCompleted ? 100 : 0;
 
     try {
@@ -356,11 +375,11 @@ export default function TasksPage({ isAdmin }: TasksPageProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>{isAdmin ? "All Tasks" : "My Tasks"}</CardTitle>
+            <CardTitle>{isAdmin ? "All Tasks" : "My Assigned Tasks"}</CardTitle>
             <CardDescription>
               {isAdmin
                 ? "View and manage tasks across all users"
-                : "View and manage your assigned tasks"}
+                : "View and manage tasks assigned to you"}
             </CardDescription>
           </div>
           <div className="text-sm text-muted-foreground">

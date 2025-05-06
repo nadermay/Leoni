@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           <ThemeProvider
             attribute="class"
@@ -27,7 +27,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <TaskProvider>{children}</TaskProvider>
+            <TaskProvider>
+              <div suppressHydrationWarning>{children}</div>
+            </TaskProvider>
           </ThemeProvider>
         </Providers>
       </body>

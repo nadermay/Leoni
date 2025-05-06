@@ -237,7 +237,7 @@ export function UsersManagement() {
                     setSelectedUsers(
                       selectedUsers.length === users.length
                         ? []
-                        : users.map((user) => user.id)
+                        : users.map((user) => user._id.toString())
                     );
                   }}
                 />
@@ -251,11 +251,11 @@ export function UsersManagement() {
           </TableHeader>
           <TableBody>
             {users.map((user) => (
-              <TableRow key={user.id}>
+              <TableRow key={user._id}>
                 <TableCell>
                   <Checkbox
-                    checked={selectedUsers.includes(user.id)}
-                    onCheckedChange={() => handleSelectUser(user.id)}
+                    checked={selectedUsers.includes(user._id.toString())}
+                    onCheckedChange={() => handleSelectUser(user._id)}
                   />
                 </TableCell>
                 <TableCell>{user.name}</TableCell>

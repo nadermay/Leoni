@@ -81,13 +81,13 @@ export function RecentTasksTable({
 }: RecentTasksTableProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { updateTask, deleteTask, currentUser } = useTaskContext();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { updateTask, deleteTask } = useTaskContext();
 
   useEffect(() => {
     if (selectedTask && !tasks.find((t) => t._id === selectedTask._id)) {
@@ -110,9 +110,10 @@ export function RecentTasksTable({
   const canToggleCompletion = useCallback(
     (task: Task) => {
       if (isAdmin) return true;
-      return !isTaskExpired(task);
+      // Regular users can only toggle their own tasks and can't uncheck completed tasks
+      return task.pilotes === currentUser?.name && !isTaskExpired(task);
     },
-    [isAdmin, isTaskExpired]
+    [isAdmin, isTaskExpired, currentUser]
   );
 
   const sortedTasks = useMemo(() => {
@@ -295,7 +296,11 @@ export function RecentTasksTable({
                             {!canToggle && (
                               <TooltipContent>
                                 <p>
-                                  Cannot change status of expired/locked task.
+                                  {isAdmin
+                                    ? "Cannot change status of expired task"
+                                    : task.pilotes !== currentUser?.name
+                                    ? "You can only modify tasks assigned to you"
+                                    : "Cannot change status of expired task"}
                                 </p>
                               </TooltipContent>
                             )}

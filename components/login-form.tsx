@@ -22,6 +22,8 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -30,9 +32,30 @@ export function LoginForm() {
     setIsMounted(true);
   }, []);
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setEmailError("");
+    setPasswordError("");
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password
+    if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters long");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const result = await signIn("credentials", {
@@ -42,15 +65,48 @@ export function LoginForm() {
       });
 
       if (result?.error) {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password",
-          variant: "destructive",
-        });
+        const errorMessage = result.error;
+
+        if (errorMessage === "Email not found") {
+          setEmailError("This email is not registered");
+          toast({
+            title: "Login failed",
+            description: "This email is not registered in our system",
+            variant: "destructive",
+          });
+        } else if (errorMessage === "Incorrect password") {
+          setPasswordError("The password you entered is incorrect");
+          toast({
+            title: "Login failed",
+            description: "The password you entered is incorrect",
+            variant: "destructive",
+          });
+        } else if (errorMessage === "Account is inactive") {
+          toast({
+            title: "Account Inactive",
+            description:
+              "Your account has been deactivated. Please contact support.",
+            variant: "destructive",
+          });
+        } else if (errorMessage === "Please enter both email and password") {
+          if (!email) setEmailError("Email is required");
+          if (!password) setPasswordError("Password is required");
+          toast({
+            title: "Missing Information",
+            description: "Please enter both email and password",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Login failed",
+            description: "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
-          title: "Login successful",
-          description: "Welcome back!",
+          title: "Welcome back! 👋",
+          description: "You have successfully logged in.",
         });
         router.push("/dashboard");
         router.refresh();
@@ -88,9 +144,14 @@ export function LoginForm() {
               type="email"
               placeholder="Enter your email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailError("");
+              }}
               required
+              className={emailError ? "border-red-500" : ""}
             />
+            {emailError && <p className="text-sm text-red-500">{emailError}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
@@ -99,9 +160,16 @@ export function LoginForm() {
               type="password"
               placeholder="Enter your password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError("");
+              }}
               required
+              className={passwordError ? "border-red-500" : ""}
             />
+            {passwordError && (
+              <p className="text-sm text-red-500">{passwordError}</p>
+            )}
           </div>
         </CardContent>
         <CardFooter>

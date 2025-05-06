@@ -82,7 +82,7 @@ export function calculateTaskStatus(task: Partial<Task>): Task["status"] {
     return "overdue";
   }
 
-  return task.avancement > 0 ? "in-progress" : "pending";
+  return (task.avancement ?? 0) > 0 ? "in-progress" : "pending";
 }
 
 // Define the User type
@@ -96,7 +96,7 @@ export interface User {
   status: string;
   tasksAssigned: number;
   tasksCompleted: number;
-  profilePicture?: string; // Add profile picture URL field
+  profilePicture?: string;
 }
 
 // Define the context type
@@ -145,197 +145,7 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 const SESSION_KEY = "pdca-session";
 
 // Add polling interval constant
-const POLLING_INTERVAL = 30000; // 30 seconds
-
-// Sample initial tasks
-const initialAdminTasks: Task[] = [
-  {
-    _id: "TASK-1001",
-    segSce: "Planning",
-    pdcaStage: "Plan",
-    source: "Project Manager",
-    processes: "Requirements Analysis",
-    action: "Document user stories",
-    pilotes: "John Doe",
-    delaiRealisation: "2025-03-15",
-    avancement: 100,
-    commentaires: "Completed on time",
-    status: "completed",
-    createdAt: "2025-03-10T10:00:00",
-    updatedAt: "2025-03-10T10:00:00",
-    completedAt: "2025-03-10T10:00:00",
-    dueDate: "2025-03-15T10:00:00",
-  },
-  {
-    _id: "TASK-1002",
-    segSce: "Execution",
-    pdcaStage: "Do",
-    source: "Team Lead",
-    processes: "Development",
-    action: "Implement user authentication",
-    pilotes: "Jane Smith",
-    delaiRealisation: "2025-03-20",
-    avancement: 75,
-    commentaires: "In progress, on track",
-    status: "in-progress",
-    createdAt: "2025-03-12T10:00:00",
-    updatedAt: "2025-03-12T10:00:00",
-    dueDate: "2025-03-20T10:00:00",
-  },
-  {
-    _id: "TASK-1003",
-    segSce: "Checking",
-    pdcaStage: "Check",
-    source: "QA Team",
-    processes: "Testing",
-    action: "Perform integration tests",
-    pilotes: "Bob Johnson",
-    delaiRealisation: "2025-03-10",
-    avancement: 0,
-    commentaires: "Delayed due to dependencies",
-    status: "overdue",
-    createdAt: "2025-03-05T10:00:00",
-    updatedAt: "2025-03-05T10:00:00",
-    dueDate: "2025-03-10T10:00:00",
-  },
-  {
-    _id: "TASK-1004",
-    segSce: "Acting",
-    pdcaStage: "Act",
-    source: "Product Owner",
-    processes: "Deployment",
-    action: "Release to production",
-    pilotes: "Jane Smith",
-    delaiRealisation: "2025-03-25",
-    avancement: 30,
-    commentaires: "Preparing deployment scripts",
-    status: "in-progress",
-    createdAt: "2025-03-15T10:00:00",
-    updatedAt: "2025-03-15T10:00:00",
-    dueDate: "2025-03-25T10:00:00",
-  },
-  {
-    _id: "TASK-1005",
-    segSce: "Planning",
-    pdcaStage: "Plan",
-    source: "Stakeholders",
-    processes: "Requirements Analysis",
-    action: "Gather feedback on prototype",
-    pilotes: "John Doe",
-    delaiRealisation: "2025-03-12",
-    avancement: 0,
-    commentaires: "Waiting for stakeholder availability",
-    status: "overdue",
-    createdAt: "2025-03-08T10:00:00",
-    updatedAt: "2025-03-08T10:00:00",
-    dueDate: "2025-03-12T10:00:00",
-  },
-];
-
-const initialUserTasks: Task[] = [
-  {
-    _id: "TASK-2001",
-    segSce: "Planning",
-    pdcaStage: "Plan",
-    source: "Project Manager",
-    processes: "Requirements Analysis",
-    action: "Create user stories for new features",
-    pilotes: "You",
-    delaiRealisation: "2025-03-18",
-    avancement: 60,
-    commentaires: "Working on final details",
-    status: "in-progress",
-    createdAt: "2025-03-14T10:00:00",
-    updatedAt: "2025-03-14T10:00:00",
-    dueDate: "2025-03-18T10:00:00",
-  },
-  {
-    _id: "TASK-2002",
-    segSce: "Execution",
-    pdcaStage: "Do",
-    source: "Team Lead",
-    processes: "Development",
-    action: "Implement dashboard widgets",
-    pilotes: "You",
-    delaiRealisation: "2025-03-22",
-    avancement: 100,
-    commentaires: "Completed ahead of schedule",
-    status: "completed",
-    createdAt: "2025-03-16T10:00:00",
-    updatedAt: "2025-03-16T10:00:00",
-    completedAt: "2025-03-16T10:00:00",
-    dueDate: "2025-03-22T10:00:00",
-  },
-  {
-    _id: "TASK-2003",
-    segSce: "Checking",
-    pdcaStage: "Check",
-    source: "QA Team",
-    processes: "Testing",
-    action: "Test API endpoints",
-    pilotes: "You",
-    delaiRealisation: "2025-03-08",
-    avancement: 0,
-    commentaires: "Blocked by API availability",
-    status: "overdue",
-    createdAt: "2025-03-04T10:00:00",
-    updatedAt: "2025-03-04T10:00:00",
-    dueDate: "2025-03-08T10:00:00",
-  },
-];
-
-// Initial users
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: "Nader May",
-    email: "nader@gmail.com",
-    password: "admin123",
-    role: "admin",
-    status: "active",
-    tasksAssigned: 15,
-    tasksCompleted: 10,
-    profilePicture: "/placeholder.svg?height=200&width=200",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    password: "password123",
-    role: "user",
-    status: "active",
-    tasksAssigned: 12,
-    tasksCompleted: 8,
-    profilePicture: "/placeholder.svg?height=200&width=200",
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "user@example.com",
-    password: "user123",
-    role: "user",
-    status: "active",
-    tasksAssigned: 8,
-    tasksCompleted: 5,
-    profilePicture: "/placeholder.svg?height=200&width=200",
-  },
-  {
-    id: 4,
-    name: "Alice Williams",
-    email: "alice@example.com",
-    password: "password123",
-    role: "user",
-    status: "inactive",
-    tasksAssigned: 0,
-    tasksCompleted: 0,
-    profilePicture: "/placeholder.svg?height=200&width=200",
-  },
-];
-
-// Local storage keys
-const TASKS_STORAGE_KEY = "pdca-tasks";
-const USERS_STORAGE_KEY = "pdca-users";
-const CURRENT_USER_KEY = "pdca-current-user";
+const POLLING_INTERVAL = 300000; // 5 minutes (300,000 milliseconds)
 
 // Create the provider component
 export function TaskProvider({ children }: { children: ReactNode }) {
@@ -361,6 +171,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (session?.user) {
       setCurrentUser({
+        _id: session.user.id as string,
         id: session.user.id as string,
         name: session.user.name || "",
         email: session.user.email || "",
@@ -541,7 +352,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await signOut({ redirect: false });
     setCurrentUser(null);
-  }, []);
+    toast({
+      title: "Logged out successfully",
+      description: "You have been logged out. See you soon! 👋",
+    });
+  }, [toast]);
 
   // Function to add a new task
   const addTask = useCallback(

@@ -113,6 +113,19 @@ export function UserDashboard() {
   };
 
   const handleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task) return;
+
+    // Check if the task is assigned to the current user
+    if (task.pilotes !== currentUser?.name) {
+      toast({
+        title: "Permission denied",
+        description: "You can only modify tasks assigned to you",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Regular users can only check tasks, not uncheck them
     if (!isCompleted) {
       toast({
@@ -178,7 +191,8 @@ export function UserDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Dashboard</h1>
           <p className="text-muted-foreground">
-            Track your task performance and progress
+            View and manage your assigned tasks and track your personal
+            performance
           </p>
         </div>
         <div className="flex gap-2">
